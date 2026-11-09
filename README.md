@@ -1,1 +1,553 @@
-# Group-1-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sustainable City Diorama - Festive Edition</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      overflow: hidden;
+      background-color: #0f172a;
+      color: #fff;
+    }
+
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #ui-panel {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      width: 280px;
+      z-index: 10;
+    }
+
+    #ui-panel h1 {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 5px;
+      color: #94a3b8;
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: #0284c7;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      background: #0284c7;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      margin-bottom: 8px;
+    }
+
+    .btn:hover {
+      background: #0369a1;
+    }
+
+    .info-card {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 20px;
+      border-radius: 12px;
+      width: 310px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      transition: all 0.3s ease;
+      z-index: 10;
+    }
+
+    .info-card.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(20px);
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .card-tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: bold;
+      background: #0284c7;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    .info-card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 6px;
+    }
+
+    .info-card p {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .card-stats {
+      display: flex;
+      gap: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 10px;
+    }
+
+    .stat {
+      flex: 1;
+    }
+
+    .stat-value {
+      display: block;
+      font-weight: bold;
+      color: #38bdf8;
+      font-size: 1.1rem;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+  </style>
+
+  <!-- Three.js and OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <div id="canvas-container"></div>
+
+  <!-- UI Control Panel -->
+  <div id="ui-panel">
+    <h1>Sustainable City</h1>
+    <div class="control-group">
+      <label for="speedSlider">Day/Night Speed <span id="speedVal">1.0x</span></label>
+      <input type="range" id="speedSlider" min="0" max="3" step="0.1" value="1">
+    </div>
+    <button id="toggleRain" class="btn">Toggle Rain Weather</button>
+  </div>
+
+  <!-- Interactive Info Card -->
+  <div id="info-card" class="info-card hidden">
+    <button id="close-btn" class="close-btn">&times;</button>
+    <div class="card-tag" id="card-tag">TAG</div>
+    <h2 id="card-title">Infrastructure</h2>
+    <p id="card-desc">Description text.</p>
+    <div class="card-stats">
+      <div class="stat">
+        <span class="stat-value" id="stat-1">-</span>
+        <span class="stat-label" id="stat-1-label">Metric</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="stat-2">-</span>
+        <span class="stat-label" id="stat-2-label">Metric</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('load', () => {
+      // --- 1. SETUP SCENE, CAMERA, & RENDERER ---
+      const container = document.getElementById('canvas-container');
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x87ceeb);
+
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(38, 34, 38);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 - 0.02;
+
+      // --- 2. LIGHTING & ENVIRONMENT VARIABLES ---
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const sunLight = new THREE.DirectionalLight(0xfffaed, 1.5);
+      sunLight.position.set(40, 50, 40);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.width = 2048;
+      sunLight.shadow.mapSize.height = 2048;
+      const d = 35;
+      sunLight.shadow.camera.left = -d;
+      sunLight.shadow.camera.right = d;
+      sunLight.shadow.camera.top = d;
+      sunLight.shadow.camera.bottom = -d;
+      scene.add(sunLight);
+
+      // Global Tracking Lists
+      const interactiveObjects = [];
+      const nighttimeEmissives = [];
+      const nighttimePointLights = [];
+      const riverFishes = [];
+      const christmasLights = [];
+
+      let isRaining = false;
+      let dayNightCycle = 0; 
+      let daySpeed = 0.2;
+      let isEveningOrNight = false;
+
+      const mat = (col, rough = 0.8, metal = 0.1) => 
+        new THREE.MeshStandardMaterial({ color: col, flatShading: true, roughness: rough, metalness: metal });
+
+      // Materials
+      const glowWindowMat = new THREE.MeshStandardMaterial({
+        color: 0xfef08a, emissive: 0xfde047, emissiveIntensity: 0
+      });
+      nighttimeEmissives.push(glowWindowMat);
+
+      const streetlightBulbMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff, emissive: 0xffaa33, emissiveIntensity: 0
+      });
+      nighttimeEmissives.push(streetlightBulbMat);
+
+      // Rain Particle System
+      const rainCount = 1400;
+      const rainGeo = new THREE.BufferGeometry();
+      const rainPositions = new Float32Array(rainCount * 3);
+      for (let i = 0; i < rainCount * 3; i += 3) {
+        rainPositions[i] = (Math.random() - 0.5) * 70;
+        rainPositions[i + 1] = Math.random() * 45;
+        rainPositions[i + 2] = (Math.random() - 0.5) * 70;
+      }
+      rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+      const rainMat = new THREE.PointsMaterial({
+        color: 0x38bdf8,
+        size: 0.15,
+        transparent: true,
+        opacity: 0.75
+      });
+      const rainParticles = new THREE.Points(rainGeo, rainMat);
+      rainParticles.visible = false;
+      scene.add(rainParticles);
+
+      // --- 3. TERRAIN BASE & RIVER ---
+      const terrain = new THREE.Group();
+
+      const baseCrust = new THREE.Mesh(new THREE.BoxGeometry(40, 4, 40), mat(0x451a03));
+      baseCrust.position.y = -3.0;
+      terrain.add(baseCrust);
+
+      const westBank = new THREE.Mesh(new THREE.BoxGeometry(16, 1, 40), mat(0x16a34a));
+      westBank.position.set(-12, -0.5, 0);
+      westBank.receiveShadow = true;
+      terrain.add(westBank);
+
+      const eastBank = new THREE.Mesh(new THREE.BoxGeometry(16, 1, 40), mat(0x16a34a));
+      eastBank.position.set(12, -0.5, 0);
+      eastBank.receiveShadow = true;
+      terrain.add(eastBank);
+
+      const river = new THREE.Mesh(
+        new THREE.BoxGeometry(8, 0.8, 40),
+        new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, transparent: true, opacity: 0.75 })
+      );
+      river.position.set(0, -0.6, 0);
+      terrain.add(river);
+
+      scene.add(terrain);
+
+      // Swimming Fishes
+      function createRiverFish(x, z) {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 4), mat(0xf97316));
+        body.rotation.x = Math.PI / 2;
+        g.add(body);
+
+        const tail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.15, 0.15), mat(0xef4444));
+        tail.position.z = -0.22;
+        g.add(tail);
+
+        g.position.set(x, -0.65, z);
+        scene.add(g);
+        riverFishes.push({ group: g, speed: 0.8 + Math.random() * 0.5 });
+      }
+
+      for (let f = 0; f < 12; f++) {
+        createRiverFish((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 34);
+      }
+
+      // Wooden Arch Bridge
+      function createWoodenBridge(x, z) {
+        const g = new THREE.Group();
+        const woodMat = mat(0x92400e, 0.9, 0.05);
+
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.25, 2.8), woodMat);
+        deck.position.set(0, 0.2, 0);
+        deck.castShadow = true;
+        g.add(deck);
+
+        for (let zOff of [-1.3, 1.3]) {
+          const arch = new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.12, 8, 16, Math.PI), woodMat);
+          arch.rotation.x = Math.PI;
+          arch.position.set(0, 0.3, zOff);
+          g.add(arch);
+
+          for (let xOff = -3.5; xOff <= 3.5; xOff += 1.2) {
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8), woodMat);
+            post.position.set(xOff, 0.6, zOff);
+            g.add(post);
+          }
+        }
+
+        g.position.set(x, 0, z);
+        scene.add(g);
+      }
+      createWoodenBridge(0, 0);
+
+      // --- 4. ROADS & STREETLIGHTS ---
+      const mainRoad = new THREE.Mesh(new THREE.BoxGeometry(40, 0.02, 3.2), mat(0x1e293b));
+      mainRoad.position.set(0, 0.02, 0);
+      scene.add(mainRoad);
+
+      const eastRoad = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.02, 40), mat(0x1e293b));
+      eastRoad.position.set(9.0, 0.021, 0);
+      scene.add(eastRoad);
+
+      for (let sx = -19; sx <= 19; sx += 2) {
+        if (Math.abs(sx) > 3.8) {
+          const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.023, 0.12), mat(0xffffff));
+          stripe.position.set(sx, 0.022, 0);
+          scene.add(stripe);
+        }
+      }
+      for (let sz = -19; sz <= 19; sz += 2) {
+        const stripeE = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.023, 0.8), mat(0xffffff));
+        stripeE.position.set(9.0, 0.022, sz);
+        scene.add(stripeE);
+      }
+
+      function createStreetlight(x, z) {
+        const g = new THREE.Group();
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 8), mat(0x334155));
+        pole.position.y = 1.1;
+        g.add(pole);
+
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), streetlightBulbMat);
+        bulb.position.y = 2.2;
+        g.add(bulb);
+
+        const pLight = new THREE.PointLight(0xffaa33, 0, 7, 2);
+        pLight.position.y = 2.1;
+        g.add(pLight);
+        nighttimePointLights.push(pLight);
+
+        g.position.set(x, 0, z);
+        scene.add(g);
+      }
+
+      createStreetlight(5, 2.2);
+      createStreetlight(5, -2.2);
+      createStreetlight(-5, 2.2);
+      createStreetlight(-5, -2.2);
+      createStreetlight(11.5, 10);
+      createStreetlight(11.5, -10);
+      createStreetlight(11.5, 4);
+      createStreetlight(11.5, -4);
+      createStreetlight(6.5, 10);
+      createStreetlight(6.5, -10);
+      createStreetlight(-12.0, 2.2);
+      createStreetlight(-12.0, -2.2);
+      createStreetlight(12.0, 2.2);
+      createStreetlight(12.0, -2.2);
+
+      // --- 5. CENTRAL PARK & CHRISTMAS TREE ---
+      function createCentralParkWithChristmasTree(x, z) {
+        const g = new THREE.Group();
+
+        const lawn = new THREE.Mesh(new THREE.BoxGeometry(9.5, 0.03, 9.5), mat(0x15803d));
+        lawn.position.y = 0.015;
+        g.add(lawn);
+
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 1.4, 8), mat(0x5c2c06));
+        trunk.position.y = 0.7;
+        g.add(trunk);
+
+        const leafMat = mat(0x0f5132);
+        const cone1 = new THREE.Mesh(new THREE.ConeGeometry(2.2, 2.4, 8), leafMat);
+        cone1.position.y = 2.4;
+        g.add(cone1);
+
+        const cone2 = new THREE.Mesh(new THREE.ConeGeometry(1.6, 2.0, 8), leafMat);
+        cone2.position.y = 3.6;
+        g.add(cone2);
+
+        const cone3 = new THREE.Mesh(new THREE.ConeGeometry(1.0, 1.5, 8), leafMat);
+        cone3.position.y = 4.8;
+        g.add(cone3);
+
+        const starMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.8 });
+        const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.35, 0), starMat);
+        star.position.y = 5.7;
+        g.add(star);
+
+        const lightColors = [0xff0000, 0x00ff00, 0x0088ff, 0xffff00, 0xff00ff, 0x00ffff];
+        const bulbCount = 48;
+
+        for (let i = 0; i < bulbCount; i++) {
+          const progress = i / bulbCount;
+          const height = 1.5 + progress * 3.4;
+          const radius = (1.0 - progress * 0.8) * 1.8;
+          const angle = progress * Math.PI * 12;
+
+          const bx = Math.cos(angle) * radius;
+          const bz = Math.sin(angle) * radius;
+
+          const hexColor = lightColors[i % lightColors.length];
+          const bulbMat = new THREE.MeshStandardMaterial({
+            color: hexColor,
+            emissive: hexColor,
+            emissiveIntensity: 0
+          });
+
+          const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), bulbMat);
+          bulb.position.set(bx, height, bz);
+          g.add(bulb);
+
+          christmasLights.push({
+            mesh: bulb,
+            material: bulbMat,
+            baseColor: hexColor,
+            blinkOffset: Math.random() * Math.PI * 2
+          });
+        }
+
+        function createParkBench(bx, bz, rotY) {
+          const bg = new THREE.Group();
+          const woodMat = mat(0x78350f, 0.9);
+          const seat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.4), woodMat);
+          seat.position.y = 0.35;
+          bg.add(seat);
+
+          const back = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 0.06), woodMat);
+          back.position.set(0, 0.55, -0.17);
+          bg.add(back);
+
+          const legMat = mat(0x1e293b, 0.5, 0.8);
+          for (let lx of [-0.6, 0.6]) {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 0.38), legMat);
+            leg.position.set(lx, 0.175, 0);
+            bg.add(leg);
+          }
+          bg.position.set(bx, 0, bz);
+          bg.rotation.y = rotY;
+
+          const bMeta = {
+            tag: "RECREATION", title: "Park Bench",
+            description: "Comfortable seating area in Central Park for citizens to sit and relax.",
+            stat1: "Rest", stat1Label: "Utility", stat2: "Wood", stat2Label: "Material"
+          };
+          bg.traverse(c => { if (c.isMesh) { c.userData = bMeta; interactiveObjects.push(c); } });
+          g.add(bg);
+        }
+
+        createParkBench(-2.8, 2.8, Math.PI / 4);
+        createParkBench(2.8, -2.8, -Math.PI * 0.75);
+
+        g.position.set(x, 0, z);
+
+        const meta = {
+          tag: "HOLIDAY", title: "Central Plaza Christmas Tree",
+          description: "Grand Christmas tree with colorful blinking lights active every evening and night.",
+          stat1: "Festive", stat1Label: "Season", stat2: "LED", stat2Label: "Blinking Lights"
+        };
+        g.traverse(c => { if (c.isMesh && !c.userData.title) { c.userData = meta; interactiveObjects.push(c); } });
+        scene.add(g);
+      }
+      createCentralParkWithChristmasTree(14.0, 9.0);
+
+      // --- 6. FARMS & AGRICULTURE ZONE ---
+      function createFarmZone(x, z) {
+        const g = new THREE.Group();
+
+        const farmSoil = new THREE.Mesh(new THREE.BoxGeometry(11, 0.04, 12), mat(0x3f2305, 0.95));
+        farmSoil.position.y = 0.02;
+        g.add(farmSoil);
+
+        const fenceMat = mat(0x854d0e);
+        function addFenceSegment(x1, z1, x2, z2) {
+          const dx = x2 - x1, dz = z2 - z1;
+          const len = Math.hypot(dx, dz);
+          const angle = Math.atan2(dx, dz);
+          const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, len), fenceMat);
+          rail.position.set((x1 + x2) / 2, 0.35, (z1 + z2) / 2);
+          rail.rotation.y = angle;
+          g.add(rail);
+
+          const rail2 = rail.clone();
+          rail2.position.y = 0.6;
+          g.add(rail2);
+
+          const posts = Math.ceil(len / 1.5);
+          for (let i = 0; i <= posts; i++) {
+            const t = i / posts;
+            const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), fenceMat);
+            post.position.set(x1 + dx * t, 0.35, z1 + dz * t);
+            g.add(post);
+          }
+        }
+
+        addFenceSegment(-5.3, -5.8, -5.3, 5.8);
+        addFenceSegment(-5.3, 5.8, 5.3, 5.8);
+        addFenceSegment(5.3, 5.8, 5.3, -5.8);
+        addFenceSegment(5.3, -5.8, 1.2, -5.8);
+        addFenceSegment(-1.2, -5.8, -5.3
+        
